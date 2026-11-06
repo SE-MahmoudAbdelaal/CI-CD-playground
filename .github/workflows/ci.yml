@@ -47,6 +47,9 @@ jobs:
           # Open-source (MIT) cache. The default "enhanced" cache is a proprietary
           # component covered by Gradle's terms of use.
           cache-provider: basic
+          # Only the test job saves the cache: two jobs saving the same entry at
+          # once makes one of them fail with a warning
+          cache-read-only: true
 
       - name: Make gradlew executable
         # Commits made on Windows often lose the executable bit
