@@ -1,0 +1,4 @@
+self-hosted-runner:
+  # Custom label of the self-hosted runner on this PC that runs the CD deployments (see cd.yml)
+  labels:
+    - production
