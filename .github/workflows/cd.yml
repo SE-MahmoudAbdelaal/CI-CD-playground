@@ -1,12 +1,21 @@
-# CD pipeline: deploys each image that CI publishes from master to Docker on this
-# PC, through the self-hosted GitHub Actions runner installed in D:\actions-runner.
+# CD pipeline: promotes each image that CI publishes from master through two environments.
 #
-#   CI passes on master --> CD: pull image --> replace container --> health check
-#                                              (unhealthy: the previous version comes back)
+#   CI passes on master
+#     --> staging     this PC, through the self-hosted runner in D:\actions-runner:
+#                     pull the image, replace the container, health check, roll back if unhealthy
+#     --> production  Back4app Containers, from a GitHub-hosted runner:
+#                     point the "deploy" branch at the new image, then wait until the public
+#                     URL serves the new version
 #
-# The runner must be running (D:\actions-runner\run.cmd) for a deployment to start;
-# until then the deploy job waits in the queue. To deploy an earlier version, use
-# "Run workflow" on the Actions tab and give its image tag, e.g. sha-24405c0.
+# Production is continuous delivery, not deployment: Back4app's free plan has no automatic
+# deploys, so a person deploys the new commit of the deploy branch in Back4app, and the
+# production job turns green once the app serves it. On the free plan the app's URL stays
+# live for 60 minutes after each deploy.
+#
+# Production only gets a version that already worked in staging. The staging runner must be
+# running (D:\actions-runner\run.cmd) for a deployment to start; until then it waits in the
+# queue. To deploy an earlier version, use "Run workflow" on the Actions tab and give its
+# image tag, e.g. sha-24405c0.
 name: CD
 
 on:
@@ -17,35 +26,28 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: Image tag to deploy, e.g. latest or sha-24405c0
+        description: Image tag to deploy, e.g. sha-24405c0 or latest
         required: true
         default: latest
 
 # One deployment at a time: a newer one waits instead of cancelling one in progress
 concurrency:
-  group: cd-production
+  group: cd
   cancel-in-progress: false
 
 permissions:
   contents: read
-  packages: read # lets GITHUB_TOKEN pull the image from ghcr.io
 
 jobs:
-  deploy:
-    name: Deploy to this PC
+  image:
+    name: Choose the image
     # Deploy only commits that passed every CI stage; manual runs always deploy
     if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
-    runs-on: [self-hosted, production]
-    timeout-minutes: 15
-    environment:
-      name: production
-      url: http://localhost:8080/api/todos
-    defaults:
-      run:
-        shell: powershell
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      name: ${{ steps.image.outputs.name }}
     steps:
-      - uses: actions/checkout@v7
-
       - name: Choose the image
         id: image
         env:
@@ -53,11 +55,31 @@ jobs:
           HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
         run: |
           # CI tags each image with sha-<first 7 characters of the commit>
-          $tag = if ($env:MANUAL_TAG) { $env:MANUAL_TAG } else { 'sha-' + $env:HEAD_SHA.Substring(0, 7) }
-          if ($tag -notmatch '^[A-Za-z0-9_][A-Za-z0-9._-]{0,127}$') { throw "Not a valid image tag: $tag" }
-          $image = "ghcr.io/$($env:GITHUB_REPOSITORY_OWNER.ToLower())/ci-cd-demo:$tag"
-          Write-Host "Image to deploy: $image"
-          "name=$image" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding ascii
+          tag="${MANUAL_TAG:-sha-${HEAD_SHA::7}}"
+          if [[ ! "$tag" =~ ^[A-Za-z0-9_][A-Za-z0-9._-]{0,127}$ ]]; then
+            echo "::error::Not a valid image tag: $tag"
+            exit 1
+          fi
+          image="ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/ci-cd-demo:$tag"
+          echo "Image to deploy: $image"
+          echo "name=$image" >> "$GITHUB_OUTPUT"
+
+  staging:
+    name: Deploy to staging (this PC)
+    needs: image
+    runs-on: [self-hosted, staging]
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      packages: read # lets GITHUB_TOKEN pull the image from ghcr.io (GitHub Container Registry)
+    environment:
+      name: staging
+      url: http://localhost:8080/api/health
+    defaults:
+      run:
+        shell: powershell
+    steps:
+      - uses: actions/checkout@v7
 
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v4
@@ -68,10 +90,35 @@ jobs:
 
       - name: Pull the image
         env:
-          IMAGE: ${{ steps.image.outputs.name }}
+          IMAGE: ${{ needs.image.outputs.name }}
         run: docker pull $env:IMAGE
 
       - name: Replace the running app and check it
         env:
-          IMAGE: ${{ steps.image.outputs.name }}
+          IMAGE: ${{ needs.image.outputs.name }}
         run: .\.github\scripts\deploy.ps1 -Image $env:IMAGE
+
+  production:
+    name: Release to production (Back4app)
+    needs: [image, staging]
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    permissions:
+      contents: write # pushes the new version to the deploy branch that Back4app builds from
+    environment:
+      name: production
+      url: https://cicddemo-0v43v32k.back4.app/api/health
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Check out the deploy branch
+        uses: actions/checkout@v7
+        with:
+          ref: deploy
+          path: deploy
+
+      - name: Release on Back4app and wait until it is deployed
+        env:
+          IMAGE: ${{ needs.image.outputs.name }}
+          APP_URL: https://cicddemo-0v43v32k.back4.app
+        run: bash .github/scripts/deploy-back4app.sh
