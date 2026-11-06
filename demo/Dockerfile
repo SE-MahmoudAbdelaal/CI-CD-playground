@@ -45,8 +45,6 @@ COPY --from=build /workspace/extracted/spring-boot-loader/ ./
 COPY --from=build /workspace/extracted/snapshot-dependencies/ ./
 COPY --from=build /workspace/extracted/application/ ./
 
-# Numeric so Kubernetes' runAsNonRoot check can verify it
-USER 1001:1001
 EXPOSE 8080
 
 # Let the heap use up to 75% of the container's memory limit (JVM default: 25%)
