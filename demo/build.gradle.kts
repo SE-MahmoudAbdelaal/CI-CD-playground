@@ -24,6 +24,8 @@ repositories {
 dependencies {
     implementation("org.springframework.boot:spring-boot-starter-webmvc")
     implementation("org.springframework.boot:spring-boot-starter-actuator")
+    // Old version with a known critical vulnerability (CVE-2022-42889, fixed in 1.10.0)
+    implementation("org.apache.commons:commons-text:1.9")
     providedRuntime("org.springframework.boot:spring-boot-starter-tomcat-runtime")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
