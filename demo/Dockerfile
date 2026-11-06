@@ -52,4 +52,9 @@ EXPOSE 8080
 # Let the heap use up to 75% of the container's memory limit (JVM default: 25%)
 ENV JAVA_TOOL_OPTIONS="-XX:MaxRAMPercentage=75.0"
 
+# The build this image came from (CI passes e.g. sha-24405c0), reported by GET /api/health
+# wherever the image runs. Declared last, so a new version only changes this small layer.
+ARG APP_VERSION=dev
+ENV APP_VERSION=${APP_VERSION}
+
 ENTRYPOINT ["java", "org.springframework.boot.loader.launch.WarLauncher"]

@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 # Smoke test for the Docker image: starts a container, waits until it is healthy,
 # then calls every API endpoint once. Used by CI; also works locally:
-#   bash scripts/smoke-test.sh demo:latest [host-port]
+#   bash scripts/smoke-test.sh demo:latest [host-port] [expected-version]
 set -euo pipefail
 
-IMAGE="${1:?usage: $0 <image> [host-port]}"
+IMAGE="${1:?usage: $0 <image> [host-port] [expected-version]}"
 PORT="${2:-8080}"
+EXPECTED_VERSION="${3:-}" # the version CI baked into the image, e.g. sha-24405c0
 BASE="http://localhost:${PORT}"
 NAME="demo-smoke-test-$$"
 
@@ -19,8 +20,8 @@ cleanup() {
 }
 trap cleanup EXIT
 
-# APP_VERSION is how the CD deployment tells the app its version; /api/health must report it
-docker run -d --name "$NAME" -p "${PORT}:8080" -e APP_VERSION=smoke-test "$IMAGE" >/dev/null
+# Give the app its port in PORT, the way hosting platforms such as Render do
+docker run -d --name "$NAME" -p "${PORT}:9090" -e PORT=9090 "$IMAGE" >/dev/null
 
 echo "Waiting for the app to report UP..."
 for _ in $(seq 1 30); do
@@ -36,7 +37,9 @@ echo "GET /api/health"
 health=$(curl -fsS "${BASE}/api/health")
 echo "$health"
 echo "$health" | grep -q '"status":"UP"'
-echo "$health" | grep -q '"version":"smoke-test"'
+if [ -n "$EXPECTED_VERSION" ]; then
+  echo "$health" | grep -q "\"version\":\"${EXPECTED_VERSION}\""
+fi
 
 echo "POST /api/todos"
 created=$(curl -fsS -X POST "${BASE}/api/todos" -H 'Content-Type: application/json' -d '{"title":"smoke test"}')

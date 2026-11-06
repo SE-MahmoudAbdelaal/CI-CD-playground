@@ -2,7 +2,11 @@ spring:
   application:
     name: demo
 
+server:
+  # Hosting platforms such as Render choose the port and pass it in PORT; otherwise 8080
+  port: ${PORT:8080}
+
 app:
-  # The build that is running, shown by GET /api/health. Each CD deployment sets it to
-  # the image tag (e.g. sha-24405c0) through the APP_VERSION environment variable.
+  # The build that is running, shown by GET /api/health. CI bakes it into the Docker
+  # image as APP_VERSION (e.g. sha-24405c0); local runs show "dev".
   version: dev

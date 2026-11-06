@@ -154,9 +154,12 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - name: Set image name
-        # Registry names must be lowercase; GitHub user names may not be
-        run: echo "IMAGE=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/ci-cd-demo" >> "$GITHUB_ENV"
+      - name: Set image name and version
+        # Registry names must be lowercase; GitHub user names may not be. The version is
+        # the same as the sha-<commit> image tag and is baked into the image.
+        run: |
+          echo "IMAGE=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/ci-cd-demo" >> "$GITHUB_ENV"
+          echo "VERSION=sha-${GITHUB_SHA::7}" >> "$GITHUB_ENV"
 
       - name: Compute image tags and labels
         id: meta
@@ -179,6 +182,7 @@ jobs:
           load: true
           tags: demo:ci
           labels: ${{ steps.meta.outputs.labels }}
+          build-args: APP_VERSION=${{ env.VERSION }}
           # Never reuse a cached runtime stage, so every image gets the latest OS fixes
           no-cache-filters: runtime
           cache-from: type=gha
@@ -194,7 +198,7 @@ jobs:
           exit-code: "1"
 
       - name: Smoke test the container
-        run: bash scripts/smoke-test.sh demo:ci
+        run: bash scripts/smoke-test.sh demo:ci 8080 "$VERSION"
 
       - name: Log in to GitHub Container Registry
         if: env.PUBLISH == 'true'
@@ -213,4 +217,5 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          build-args: APP_VERSION=${{ env.VERSION }}
           cache-from: type=gha
