@@ -12,7 +12,6 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.net.URI;
 import java.util.List;
 
 @RestController
@@ -41,7 +40,7 @@ public class TodoController {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "title must not be blank");
         }
         Todo todo = todoService.create(request.title().strip());
-        return ResponseEntity.created(URI.create("/api/todos/" + todo.id())).body(todo);
+        return ResponseEntity.ok(todo);
     }
 
     @DeleteMapping("/{id}")
