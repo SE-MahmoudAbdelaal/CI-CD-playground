@@ -1,0 +1,77 @@
+# CD pipeline: deploys each image that CI publishes from master to Docker on this
+# PC, through the self-hosted GitHub Actions runner installed in D:\actions-runner.
+#
+#   CI passes on master --> CD: pull image --> replace container --> health check
+#                                              (unhealthy: the previous version comes back)
+#
+# The runner must be running (D:\actions-runner\run.cmd) for a deployment to start;
+# until then the deploy job waits in the queue. To deploy an earlier version, use
+# "Run workflow" on the Actions tab and give its image tag, e.g. sha-24405c0.
+name: CD
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [master]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Image tag to deploy, e.g. latest or sha-24405c0
+        required: true
+        default: latest
+
+# One deployment at a time: a newer one waits instead of cancelling one in progress
+concurrency:
+  group: cd-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  packages: read # lets GITHUB_TOKEN pull the image from ghcr.io
+
+jobs:
+  deploy:
+    name: Deploy to this PC
+    # Deploy only commits that passed every CI stage; manual runs always deploy
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: [self-hosted, production]
+    timeout-minutes: 15
+    environment:
+      name: production
+      url: http://localhost:8080/api/todos
+    defaults:
+      run:
+        shell: powershell
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Choose the image
+        id: image
+        env:
+          MANUAL_TAG: ${{ inputs.tag }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          # CI tags each image with sha-<first 7 characters of the commit>
+          $tag = if ($env:MANUAL_TAG) { $env:MANUAL_TAG } else { 'sha-' + $env:HEAD_SHA.Substring(0, 7) }
+          if ($tag -notmatch '^[A-Za-z0-9_][A-Za-z0-9._-]{0,127}$') { throw "Not a valid image tag: $tag" }
+          $image = "ghcr.io/$($env:GITHUB_REPOSITORY_OWNER.ToLower())/ci-cd-demo:$tag"
+          Write-Host "Image to deploy: $image"
+          "name=$image" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding ascii
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull the image
+        env:
+          IMAGE: ${{ steps.image.outputs.name }}
+        run: docker pull $env:IMAGE
+
+      - name: Replace the running app and check it
+        env:
+          IMAGE: ${{ steps.image.outputs.name }}
+        run: .\.github\scripts\deploy.ps1 -Image $env:IMAGE

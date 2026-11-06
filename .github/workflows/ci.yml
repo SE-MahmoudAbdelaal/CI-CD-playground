@@ -6,6 +6,7 @@
 #
 # Pull requests and examples/** branches run every stage except the final push:
 # images are published only from main/master and version tags.
+# When this workflow passes on master, cd.yml deploys the new image.
 name: CI
 
 on:
