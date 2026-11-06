@@ -35,6 +35,11 @@ public class TodoController {
         return todoService.findById(id).orElseThrow(() -> notFound(id));
     }
 
+    @GetMapping(value = "/export", produces = "text/csv")
+    public String export() {
+        return TodoCsvExporter.toCsv(todoService.findAll());
+    }
+
     @PostMapping
     public ResponseEntity<Todo> create(@RequestBody TodoRequest request) {
         if (request.title() == null || request.title().isBlank()) {
