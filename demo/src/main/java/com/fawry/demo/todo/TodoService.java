@@ -27,7 +27,7 @@ public class TodoService {
     }
 
     public Todo create(String title) {
-        Todo todo = new Todo(nextId.getAndIncrement(), title);
+        Todo todo = new Todo(nextId.get(), title);
         todos.put(todo.id(), todo);
         return todo;
     }
