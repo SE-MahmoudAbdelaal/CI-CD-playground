@@ -1,0 +1,5 @@
+# Production settings. A real key must never be written in a file like this:
+# pass it in as an environment variable or keep it in a secret store.
+aws:
+  s3-bucket: todo-attachments
+  access-key-id: AKIAFAKEKEYFORCIDEMO
