@@ -19,7 +19,8 @@ cleanup() {
 }
 trap cleanup EXIT
 
-docker run -d --name "$NAME" -p "${PORT}:8080" "$IMAGE" >/dev/null
+# APP_VERSION is how the CD deployment tells the app its version; /api/health must report it
+docker run -d --name "$NAME" -p "${PORT}:8080" -e APP_VERSION=smoke-test "$IMAGE" >/dev/null
 
 echo "Waiting for the app to report UP..."
 for _ in $(seq 1 30); do
@@ -30,6 +31,12 @@ for _ in $(seq 1 30); do
 done
 curl -fsS "${BASE}/actuator/health"
 echo
+
+echo "GET /api/health"
+health=$(curl -fsS "${BASE}/api/health")
+echo "$health"
+echo "$health" | grep -q '"status":"UP"'
+echo "$health" | grep -q '"version":"smoke-test"'
 
 echo "POST /api/todos"
 created=$(curl -fsS -X POST "${BASE}/api/todos" -H 'Content-Type: application/json' -d '{"title":"smoke test"}')

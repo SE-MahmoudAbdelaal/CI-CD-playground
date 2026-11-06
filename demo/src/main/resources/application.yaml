@@ -1,3 +1,8 @@
 spring:
   application:
     name: demo
+
+app:
+  # The build that is running, shown by GET /api/health. Each CD deployment sets it to
+  # the image tag (e.g. sha-24405c0) through the APP_VERSION environment variable.
+  version: dev

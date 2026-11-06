@@ -32,7 +32,10 @@ function Get-AppImage {
 }
 
 function Start-App([string] $AppImage) {
-    Invoke-Docker run --detach --name $Name --restart unless-stopped --publish "${Port}:8080" $AppImage | Out-Null
+    # The image tag (e.g. sha-24405c0) becomes the version that GET /api/health reports
+    $version = if ($AppImage -match ':([\w][\w.-]*)$') { $Matches[1] } else { $AppImage }
+    Invoke-Docker run --detach --name $Name --restart unless-stopped --publish "${Port}:8080" `
+        --env "APP_VERSION=$version" $AppImage | Out-Null
 }
 
 function Remove-App {

@@ -13,7 +13,8 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /** Integration tests: starts the whole app on a random port and calls it over real HTTP. */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
+        properties = "app.version=1.2.3-test")
 class TodoApiIntegrationTest {
 
     @LocalServerPort
@@ -31,6 +32,16 @@ class TodoApiIntegrationTest {
         client.get().uri("/actuator/health").exchange()
                 .expectStatus().isOk()
                 .expectBody().jsonPath("$.status").isEqualTo("UP");
+    }
+
+    @Test
+    void apiHealthReportsUpAndTheConfiguredVersion() {
+        client.get().uri("/api/health").exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.status").isEqualTo("UP")
+                .jsonPath("$.version").isEqualTo("1.2.3-test")
+                .jsonPath("$.startedAt").isNotEmpty();
     }
 
     @Test
