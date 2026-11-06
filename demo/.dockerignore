@@ -1,0 +1,25 @@
+# Keep the build context small: only the Gradle wrapper, build scripts and src/ are needed.
+
+# VCS / IDE
+.git
+.gitignore
+.gitattributes
+.idea
+.vscode
+*.iml
+*.iws
+*.ipr
+
+# Local build output and caches (the image builds from scratch)
+.gradle
+build
+out
+bin
+
+# Docker files themselves
+Dockerfile
+.dockerignore
+compose.yaml
+
+# Docs
+*.md

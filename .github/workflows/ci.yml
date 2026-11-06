@@ -1,0 +1,193 @@
+# CI pipeline for the Spring Boot API in demo/
+#
+#   lint ───────┐
+#   test ───────┼──► docker: build image → scan image → smoke test → push to ghcr.io
+#   security ───┘
+#
+# Pull requests run every stage except the final push.
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+    tags: ["v*.*.*"]
+  pull_request:
+  workflow_dispatch:
+
+# A newer commit on the same branch or PR cancels the run still in progress.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  JAVA_VERSION: "27"
+
+defaults:
+  run:
+    working-directory: demo
+
+jobs:
+  lint:
+    name: Lint (Checkstyle)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+
+      - uses: gradle/actions/setup-gradle@v6
+
+      - name: Make gradlew executable
+        # Commits made on Windows often lose the executable bit
+        run: chmod +x gradlew
+
+      - name: Run Checkstyle
+        run: ./gradlew checkstyleMain checkstyleTest
+
+      - name: Upload Checkstyle report
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: checkstyle-report
+          path: demo/build/reports/checkstyle/
+          retention-days: 7
+
+  test:
+    name: Test & coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+
+      - uses: gradle/actions/setup-gradle@v6
+
+      - name: Make gradlew executable
+        run: chmod +x gradlew
+
+      - name: Run unit and integration tests
+        run: ./gradlew test
+
+      - name: Check coverage (minimum 80%)
+        run: ./gradlew jacocoTestCoverageVerification
+
+      - name: Add coverage to the job summary
+        if: always() && hashFiles('demo/build/reports/jacoco/test/jacocoTestReport.xml') != ''
+        run: |
+          python3 - <<'EOF' >> "$GITHUB_STEP_SUMMARY"
+          import xml.etree.ElementTree as ET
+          report = ET.parse("build/reports/jacoco/test/jacocoTestReport.xml").getroot()
+          print("### Test coverage\n\n| Counter | Coverage |\n|---|---|")
+          for counter in report.findall("counter"):
+              missed, covered = int(counter.get("missed")), int(counter.get("covered"))
+              print(f"| {counter.get('type').title()} | {100 * covered / (missed + covered):.1f}% |")
+          EOF
+
+      - name: Upload test and coverage reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-reports
+          path: |
+            demo/build/reports/tests/test/
+            demo/build/reports/jacoco/test/
+          retention-days: 7
+          if-no-files-found: ignore
+
+  security:
+    name: Security scan (secrets & Dockerfile)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Scan for leaked secrets and Dockerfile misconfigurations
+        # Pinned to a commit SHA rather than a tag: a tag can be moved to point at different code
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: demo
+          scanners: secret,misconfig
+          severity: CRITICAL,HIGH
+          exit-code: "1"
+
+  docker:
+    name: Build, scan & publish image
+    needs: [lint, test, security]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      packages: write # lets GITHUB_TOKEN push to ghcr.io
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set image name
+        # Registry names must be lowercase; GitHub user names may not be
+        run: echo "IMAGE=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/ci-cd-demo" >> "$GITHUB_ENV"
+
+      - name: Compute image tags and labels
+        id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: ${{ env.IMAGE }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=sha
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - uses: docker/setup-buildx-action@v4
+
+      - name: Build image
+        uses: docker/build-push-action@v7
+        with:
+          context: demo
+          load: true
+          tags: demo:ci
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Scan image for vulnerabilities
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: demo:ci
+          scanners: vuln
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: "1"
+
+      - name: Smoke test the container
+        run: bash scripts/smoke-test.sh demo:ci
+
+      - name: Log in to GitHub Container Registry
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push image
+        # Same builder and cache as "Build image", so this reuses the tested layers
+        if: github.event_name != 'pull_request'
+        uses: docker/build-push-action@v7
+        with:
+          context: demo
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
