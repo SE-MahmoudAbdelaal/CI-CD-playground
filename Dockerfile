@@ -1,7 +1,7 @@
 # Production image for Back4app Containers, which deploys every commit to this branch.
 # Don't edit by hand: the CD workflow (.github/workflows/cd.yml on master) rewrites the FROM
 # line with each version that already passed staging.
-FROM ghcr.io/se-mahmoudabdelaal/ci-cd-demo:sha-3f1602e
+FROM ghcr.io/se-mahmoudabdelaal/ci-cd-demo:sha-bee73ab
 
 # Fit Back4app's free instance (256 MB RAM, 0.25 CPU): a smaller heap and code cache, the
 # serial garbage collector, the quick C1 compiler only, and fewer Tomcat threads.
