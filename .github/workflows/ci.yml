@@ -61,7 +61,7 @@ jobs:
       - name: Show Checkstyle errors as annotations
         # Turns each "[ant:checkstyle] [ERROR] file:line:col: message" output line into
         # an annotation on the run page (and on the changed line in pull requests)
-        run: echo "::add-matcher::$GITHUB_WORKSPACE/.github/checkstyle-problem-matcher.json"
+        run: echo "::add-matcher::$GITHUB_WORKSPACE/.github/problem-matchers.json"
 
       - name: Run Checkstyle
         run: ./gradlew checkstyleMain checkstyleTest
@@ -93,23 +93,22 @@ jobs:
       - name: Make gradlew executable
         run: chmod +x gradlew
 
+      - name: Show coverage failures as annotations
+        # Turns Gradle's "Rule violated ... covered ratio is 0.65, but expected minimum
+        # is 0.80" line into an annotation on the run page
+        run: echo "::add-matcher::$GITHUB_WORKSPACE/.github/problem-matchers.json"
+
       - name: Run unit and integration tests
         run: ./gradlew test
 
       - name: Check coverage (minimum 80%)
         run: ./gradlew jacocoTestCoverageVerification
 
-      - name: Add coverage to the job summary
-        if: always() && hashFiles('demo/build/reports/jacoco/test/jacocoTestReport.xml') != ''
-        run: |
-          python3 - <<'EOF' >> "$GITHUB_STEP_SUMMARY"
-          import xml.etree.ElementTree as ET
-          report = ET.parse("build/reports/jacoco/test/jacocoTestReport.xml").getroot()
-          print("### Test coverage\n\n| Counter | Coverage |\n|---|---|")
-          for counter in report.findall("counter"):
-              missed, covered = int(counter.get("missed")), int(counter.get("covered"))
-              print(f"| {counter.get('type').title()} | {100 * covered / (missed + covered):.1f}% |")
-          EOF
+      - name: Report test results and coverage
+        # Each failed test becomes an annotation on the run page that points at the
+        # failing line; the job summary gets the test counts, failures and coverage
+        if: always() && hashFiles('demo/build/test-results/test/*.xml') != ''
+        run: python3 "$GITHUB_WORKSPACE/.github/scripts/report-tests.py"
 
       - name: Upload test and coverage reports
         if: always()

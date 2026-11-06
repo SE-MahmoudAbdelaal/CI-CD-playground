@@ -12,6 +12,15 @@
           "code": 5
         }
       ]
+    },
+    {
+      "owner": "jacoco",
+      "pattern": [
+        {
+          "regexp": "^\\[ant:jacocoReport\\] (Rule violated .+)$",
+          "message": 1
+        }
+      ]
     }
   ]
 }
