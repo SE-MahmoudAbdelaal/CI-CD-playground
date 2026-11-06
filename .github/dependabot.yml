@@ -1,0 +1,30 @@
+# Dependabot checks for newer versions once a week and opens pull requests for
+# them. Each pull request runs the full CI pipeline, so you can see whether an
+# update builds and passes the tests and scans before you merge it.
+#
+# The Docker base images are not listed: their tags float (27-jdk, 27-jre), so
+# every CI build pulls the newest image, and the Dockerfile installs the latest
+# Ubuntu security fixes itself.
+version: 2
+updates:
+  # Actions used by .github/workflows, including the SHA-pinned Trivy action
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      github-actions:
+        patterns: ["*"]
+
+  # Gradle plugins and the Gradle wrapper in demo/. Updating the Spring Boot
+  # plugin also updates every library whose version Spring Boot manages.
+  - package-ecosystem: gradle
+    directory: /demo
+    schedule:
+      interval: weekly
+    groups:
+      # Minor and patch updates arrive together in one pull request; a major
+      # update gets its own, since it is more likely to need code changes
+      gradle-minor-and-patch:
+        patterns: ["*"]
+        update-types: [minor, patch]
