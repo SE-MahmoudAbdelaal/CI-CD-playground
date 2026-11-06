@@ -43,6 +43,10 @@ jobs:
           java-version: ${{ env.JAVA_VERSION }}
 
       - uses: gradle/actions/setup-gradle@v6
+        with:
+          # Open-source (MIT) cache. The default "enhanced" cache is a proprietary
+          # component covered by Gradle's terms of use.
+          cache-provider: basic
 
       - name: Make gradlew executable
         # Commits made on Windows often lose the executable bit
@@ -72,6 +76,8 @@ jobs:
           java-version: ${{ env.JAVA_VERSION }}
 
       - uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-provider: basic
 
       - name: Make gradlew executable
         run: chmod +x gradlew
@@ -158,6 +164,8 @@ jobs:
           load: true
           tags: demo:ci
           labels: ${{ steps.meta.outputs.labels }}
+          # Never reuse a cached runtime stage, so every image gets the latest OS fixes
+          no-cache-filters: runtime
           cache-from: type=gha
           cache-to: type=gha,mode=max
 

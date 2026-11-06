@@ -28,8 +28,14 @@ RUN java -Djarmode=tools -jar build/libs/*.war extract --layers --launcher --des
 # ---------------------------------------------------------------------------
 # Stage 2: runtime image (JRE only, runs as a non-root user)
 # ---------------------------------------------------------------------------
-FROM eclipse-temurin:${JAVA_VERSION}-jre
+FROM eclipse-temurin:${JAVA_VERSION}-jre AS runtime
 WORKDIR /app
+
+# Apply Ubuntu's latest security fixes. The base image is only rebuilt from time
+# to time, so it can ship packages that already have a published fix.
+RUN apt-get update \
+ && DEBIAN_FRONTEND=noninteractive apt-get upgrade -y \
+ && rm -rf /var/lib/apt/lists/*
 
 RUN groupadd --gid 1001 spring \
  && useradd --uid 1001 --gid spring --no-create-home --shell /usr/sbin/nologin spring
