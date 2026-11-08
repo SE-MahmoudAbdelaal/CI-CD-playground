@@ -1,4 +1,4 @@
-package com.fawry.demo.todo;
+package com.fawry.demo.TodoResponse;
 
 import org.springframework.stereotype.Service;
 
@@ -13,21 +13,21 @@ import java.util.concurrent.atomic.AtomicLong;
 @Service
 public class TodoService {
 
-    private final Map<Long, Todo> todos = new ConcurrentHashMap<>();
+    private final Map<Long, TodoResponse> todos = new ConcurrentHashMap<>();
     private final AtomicLong nextId = new AtomicLong(1);
 
-    public List<Todo> findAll() {
+    public List<TodoResponse> findAll() {
         return todos.values().stream()
-                .sorted(Comparator.comparingLong(Todo::id))
+                .sorted(Comparator.comparingLong(TodoResponse::id))
                 .toList();
     }
 
-    public Optional<Todo> findById(long id) {
+    public Optional<TodoResponse> findById(long id) {
         return Optional.ofNullable(todos.get(id));
     }
 
     public Todo create(String title) {
-        Todo todo = new Todo(nextId.getAndIncrement(), title);
+        TodoResponse todo = new TodoResponse(nextId.getAndIncrement(), title);
         todos.put(todo.id(), todo);
         return todo;
     }
