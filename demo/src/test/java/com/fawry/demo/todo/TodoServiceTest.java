@@ -1,4 +1,4 @@
-package com.fawry.demo.todo;
+package com.fawry.demo.TodoResponse;
 
 import org.junit.jupiter.api.Test;
 
