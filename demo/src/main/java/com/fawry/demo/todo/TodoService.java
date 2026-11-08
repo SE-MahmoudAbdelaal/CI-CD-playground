@@ -26,7 +26,7 @@ public class TodoService {
         return Optional.ofNullable(todos.get(id));
     }
 
-    public Todo create(String title) {
+    public TodoResponse create(String title) {
         TodoResponse todo = new TodoResponse(nextId.getAndIncrement(), title);
         todos.put(todo.id(), todo);
         return todo;
