@@ -1,6 +1,5 @@
 package com.fawry.demo.todo;
 
-import com.fawry.demo.todo.TodoResponse;
 import org.springframework.stereotype.Service;
 
 import java.util.Comparator;
