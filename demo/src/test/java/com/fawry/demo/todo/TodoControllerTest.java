@@ -1,4 +1,4 @@
-package com.fawry.demo.todo;
+package com.fawry.demo.TodoResponse;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
@@ -47,7 +47,7 @@ class TodoControllerTest {
 
     @Test
     void deleteReturns204AndRemovesTodo() {
-        Todo todo = service.create("temp");
+        TodoResponse todo = service.create("temp");
 
         assertThat(mvc.delete().uri("/api/todos/{id}", todo.id())).hasStatus(HttpStatus.NO_CONTENT);
         assertThat(mvc.get().uri("/api/todos/{id}", todo.id())).hasStatus(HttpStatus.NOT_FOUND);
