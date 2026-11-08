@@ -1,6 +1,6 @@
 package com.fawry.demo;
 
-import com.fawry.demo.todo.Todo;
+import com.fawry.demo.todo.TodoResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -46,7 +46,7 @@ class TodoApiIntegrationTest {
 
     @Test
     void createReadAndDeleteTodo() {
-        Todo created = client.post().uri("/api/todos")
+        TodoResponse created = client.post().uri("/api/todos")
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(Map.of("title", "Ship it"))
                 .exchange()

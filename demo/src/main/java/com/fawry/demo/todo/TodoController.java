@@ -26,17 +26,17 @@ public class TodoController {
     }
 
     @GetMapping
-    public List<Todo> list() {
+    public List<TodoResponse> list() {
         return todoService.findAll();
     }
 
     @GetMapping("/{id}")
-    public Todo get(@PathVariable long id) {
+    public TodoResponse get(@PathVariable long id) {
         return todoService.findById(id).orElseThrow(() -> notFound(id));
     }
 
     @PostMapping
-    public ResponseEntity<Todo> create(@RequestBody TodoRequest request) {
+    public ResponseEntity<TodoResponse> create(@RequestBody TodoRequest request) {
         if (request.title() == null || request.title().isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "title must not be blank");
         }
