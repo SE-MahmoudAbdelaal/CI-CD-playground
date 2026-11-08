@@ -11,10 +11,10 @@ class TodoServiceTest {
 
     @Test
     void createAssignsIncreasingIds() {
-        Todo first = service.create("first");
-        Todo second = service.create("second");
+        TodoResponse first = service.create("first");
+        TodoResponse second = service.create("second");
 
-        assertThat(first).isEqualTo(new Todo(1, "first"));
+        assertThat(first).isEqualTo(new TodoResponse(1, "first"));
         assertThat(second.id()).isEqualTo(2);
     }
 
@@ -23,7 +23,7 @@ class TodoServiceTest {
         service.create("a");
         service.create("b");
 
-        assertThat(service.findAll()).extracting(Todo::title).containsExactly("a", "b");
+        assertThat(service.findAll()).extracting(TodoResponse::title).containsExactly("a", "b");
     }
 
     @Test
@@ -33,7 +33,7 @@ class TodoServiceTest {
 
     @Test
     void deleteRemovesTodo() {
-        Todo todo = service.create("temp");
+        TodoResponse todo = service.create("temp");
 
         assertThat(service.delete(todo.id())).isTrue();
         assertThat(service.findById(todo.id())).isEmpty();
