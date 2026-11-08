@@ -1,0 +1,14 @@
+demo/src/main/java/com/fawry/demo/todo/TodoService.java
+  h_319538620382b0 29
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "becebdd52abf91b5ef2cf52e7d6194ae260d25a5",
+  "prompts": {},
+  "humans": {
+    "h_319538620382b0": {
+      "author": "Mahmoud.SAbdelaal@Fawry.com <Mahmoud.SAbdelaal@Fawry.com>"
+    }
+  }
+}
