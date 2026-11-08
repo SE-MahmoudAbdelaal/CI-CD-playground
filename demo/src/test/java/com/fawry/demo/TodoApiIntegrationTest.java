@@ -51,7 +51,7 @@ class TodoApiIntegrationTest {
                 .body(Map.of("title", "Ship it"))
                 .exchange()
                 .expectStatus().isCreated()
-                .expectBody(Todo.class)
+                .expectBody(TodoResponse.class)
                 .returnResult()
                 .getResponseBody();
 
