@@ -1,4 +1,4 @@
-package com.fawry.demo.TodoResponse;
+package com.fawry.demo.todo;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
