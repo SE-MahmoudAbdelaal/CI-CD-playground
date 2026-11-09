@@ -40,6 +40,7 @@ public class TodoController {
         if (request.title() == null || request.title().isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "title must not be blank");
         }
+        System.out.println("Creating todo with title: " + request.title());
         TodoResponse todo = todoService.create(request.title().strip());
         return ResponseEntity.created(URI.create("/api/todos/" + todo.id())).body(todo);
     }
